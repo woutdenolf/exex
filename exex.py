@@ -32,6 +32,7 @@ def plotSet(set0,over=None,pltOk=True,xtitle="x",ytitle="y",toptitle="",label=""
     """
 
     if pltOk:
+        import matplotlib.pylab as plt
         plt.figure(0)
 
         plt.title(toptitle)
@@ -210,11 +211,11 @@ def polspl(x,y,w,npts,xl,xh,nr,nc):
      PROCEDURE:
     	(Translated from a Fortran Code)
     	The method here is to fit ordinary polynomials in X, not B-splines,
-    	order to save space on a mini-computer.  This means that the
+    	in order to save space on a mini-computer.  This means that the
     	is rather poorly conditioned, and hence the limits on the
-    	of the polynomial.  The method of solution is Lagrange's
-    	multipliers for the knot constraints and gaussian
-    	to solve the linear system.
+    	degree of the polynomial.  The method of solution is Lagrange's
+    	undetermined multipliers for the knot constraints and gaussian
+    	elimination to solve the linear system.
     
      MODIFICATION HISTORY:
      	Written by:	Manuel Sanchez del Rio. ESRF February, 1993	
@@ -222,6 +223,33 @@ def polspl(x,y,w,npts,xl,xh,nr,nc):
     
         this subroutine is a translation of the fortran subroutine
         poslpl.for (found in the Frascati's package of EXAFS data analysis)
+        which header states:
+
+        	SUBROUTINE POLSPL(X,Y,W,NPTS,XL,XH,NR,C,NC)
+        C
+        C	POLYNOMIAL SPLINE LEAST SQUARES FIT TO DATA POINTS Y(I).
+        C	ONLY THE FUNCTION AND IT'S FIRST DERIVATIVE ARE MATCHED AT THE KNOTS,
+        C	IN ORDER TO GIVE MORE DEGREES OF FREEDOM IN THE FIT.
+        C
+        C	X(I),I=1,NPTS		ABSCISSAS
+        C	Y(I),I=1,NPTS		ORDINATES
+        C	W(I),I=1,NPTS		WEIGHTING FACTOR IN LEAST SQUARES FIT
+        C			FIT MINIMIZES THE SUM OF W(I)*(Y(I)-POLY(X(I)))**2
+        C			IF UNIFORM WEIGHTING IS DESIRED, W(I) MUST BE 1.
+        C
+        C	NPTS POINTS IN X,Y ARRAYS.  XL,XH ARRAYS CONTAIN NR ADJACENT RANGES
+        C	OVER WHICH TO FIT INDIVIDUAL POLYNOMIALS.  ARRAY NC SPECIFIES
+        C	HOW MANY POLY COEFFS TO USE IN EACH RANGE.  ARRAY C RETURNS
+        C	ALL COEFFS, THE FIRST NC(1) OF WHICH BELONG TO THE FIRST RANGE,
+        C	THE SECOND NC(2) OF WHICH BELONG TO THE SECOND RANGE, AND SO FORTH.
+        C
+        C	THE METHOD HERE IS TO FIT ORDINARY POLYNOMIALS IN X, NOT B-SPLINES,
+        C	IN ORDER TO SAVE SPACE ON A MINI-COMPUTER.  THIS MEANS THAT THE
+        C	FIT IS RATHER POORLY CONDITIONED, AND HENCE THE LIMITS ON THE
+        C	DEGREE OF THE POLYNOMIAL.  THE METHOD OF SOLUTION IS LAGRANGE'S
+        C	UNDETERMINED MULTIPLIERS FOR THE KNOT CONSTRAINTS AND GAUSSIAN
+        C	ELIMINATION TO SOLVE THE LINEAR SYSTEM.
+        C
     
     """
 
@@ -389,7 +417,7 @@ def polspl_test():
 
 def postEdge(set2,kmin=None,kmax=None,polDegree=[3,3,3],knots=None):
     r"""
-        postEdge(set2,xrange=None,polDegree=[3,3,3],knots=None):
+        postEdge(set2,kmin=None,kmax=None,polDegree=[3,3,3],knots=None)
     
      PURPOSE:
     	This procedure calculates the post edge fit of a xafs spectrum
@@ -433,8 +461,8 @@ def postEdge(set2,kmin=None,kmax=None,polDegree=[3,3,3],knots=None):
     if kmax != None:
         x2 = kmax
 
-    xrange = [x1,x2]
-    print("++++++++++++++++++",xrange)
+    xrange1 = [x1,x2]
+    print("++++++++++++++++++",xrange1)
 
     if (knots != None):
         if ( (len(polDegree)+1) != len(knots) ):
@@ -442,12 +470,12 @@ def postEdge(set2,kmin=None,kmax=None,polDegree=[3,3,3],knots=None):
             print("       Forced automatic (equidistant) knot definition.")
             knots = None
         else: 
-            xrange = knots[0,-1]
+            xrange1 = knots[0],knots[-1]
 
 
     nr = len(polDegree)
-    xl[1] = xrange[0]
-    xh[nr] = xrange[1]
+    xl[1] = xrange1[0]
+    xh[nr] = xrange1[1]
 
     for i in range(1,nr+1):
         nc[i] = polDegree[i-1] + 1  
@@ -459,13 +487,13 @@ def postEdge(set2,kmin=None,kmax=None,polDegree=[3,3,3],knots=None):
             xh[i]   = xl[i+1]
     else:
         for i in range(1,nr):
-            xl[i+1] = knots[i-1]
+            xl[i+1] = knots[i]
             xh[i]   = xl[i+1]
 
     #
     # select only points in selected interval
     #
-    goodi = (set2[:,0] >= xrange[0]) & (set2[:,0] <= xrange[1])
+    goodi = (set2[:,0] >= xrange1[0]) & (set2[:,0] <= xrange1[1])
     set22 = set2[goodi,:]
 
     print(' Number of fitting points: %d'%(len(set22[:,0])))
@@ -883,7 +911,8 @@ if __name__ == '__main__':
     #numpy.savetxt("set22.dat",set0)
     #print("File written to disk: set22.dat")
 
-    fit0 = postEdge(set0,polDegree=[3,2,2,2],kmin=2.)
+    #fit0 = postEdge(set0,polDegree=[3,2,2,2],kmin=2.)
+    fit0 = postEdge(set0,polDegree=[3,2,2,3],knots=[2.0,4.0,6.0,10,20])
 
     plotSet(set0,fit0,xtitle="k [$A^{-1}$]",ytitle=" fit ",toptitle="post edge",xmin=2,ymin=-.5,ymax=1.5)
 
